@@ -5,11 +5,12 @@
 This is just a hacky and dumb audio ducker for linuxe's pulseaudio that is far from being optmized and
 stable enough. Is more like a personal experiment for my own purposes. 
 
-## What the heck is an audio Ducker?
+## What the heck is an Audio Ducker?
 
 It will lower the volume of other audio streams/sinks/playbacks while you want
-to give priority on what you want to hear. You can configure this by setting
-some variables on the code. 
+to give priority on something else what you want to hear, only when this prefered stream is playing.
+You can configure this by setting some strings inside the lists on the begining
+of this code. 
 
 ## Usage
 
