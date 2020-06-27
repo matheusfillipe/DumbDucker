@@ -1,10 +1,10 @@
 #!/bin/python3 
 
 
-PHONES=['Playback Stream'] # Voice to duck over when sink is created. It wil duck over the Play_voices. This is useful for thinkgs that are only create sinks when activated, like audios on telegram.
-PLAY_VOICES=['AudioStream'] # Name of the Playback to give preference and start ducking all others when it starts playing
+PHONES=['telegram-desktop'] # Voice to duck over when sink is created. It wil duck over the Play_voices. This is useful for thinkgs that are only create sinks when activated, like audios on telegram.
+PLAY_VOICES=['Firefox'] # Name of the Playback to give preference and start ducking all others when it starts playing
 DUCKABLE=['RTP Stream (PulseAudio RTP Stream on Vostro)', 'Spotify']#, 'AudioStream'] # Streams to lower when something from the list above plays
-FACTOR=0.35 # Factor to lower other sink's volumes
+FACTOR=0.38 # Factor to lower other sink's volumes
 
 
 #########################################################################
@@ -38,6 +38,12 @@ def verbose(*args):
     global verboseMode
     if verboseMode: print(*args)
 
+def appName(sink):
+    key="application.name"
+    p=sink.proplist
+    if key in p: return p[key]
+    else: return sink.name
+
 def callback(pulse, ev):
     global event 
     if ev.t in [pulsectl.PulseEventTypeEnum.new,pulsectl.PulseEventTypeEnum.remove, pulsectl.PulseEventTypeEnum.change]:
@@ -57,13 +63,13 @@ def get_sink(pulse, ev):
 
 def check_playing(pulse, sink):
     global playing
-    if sink and sink.name in PLAY_VOICES+PHONES:
+    if sink and appName(sink) in PLAY_VOICES+PHONES:
         verbose("Checking!")
         isPlaying=pulse.get_peak_sample(pulse.sink_info(sink.sink).monitor_source, 0.3, sink.index)>0            
-        if isPlaying and not sink.name in playing:
-            playing.append(sink.name)
-        elif sink.name in playing and not sink.name in PHONES:
-            playing.remove(sink.name)
+        if isPlaying and not appName(sink) in playing:
+            playing.append(appName(sink))
+        elif appName(sink) in playing and not appName(sink) in PHONES:
+            playing.remove(appName(sink))
         return isPlaying
 
 def update(pulse):
@@ -71,8 +77,8 @@ def update(pulse):
     sinks=pulse.sink_input_list()
     newplaying=[]
     for sink in sinks:
-        if sink.name in playing:
-            newplaying.append(sink.name)
+        if appName(sink) in playing:
+            newplaying.append(appName(sink))
     playing=newplaying
 
 
@@ -89,8 +95,8 @@ def duck(ev, pulse):
     elif ev.t==pulsectl.PulseEventTypeEnum.new: 
         sinks=pulse.sink_input_list()
         for sink in sinks:
-            if sink.name in PHONES:
-                playing.append(sink.name)
+            if appName(sink) in PHONES:
+                playing.append(appName(sink))
     else:
         sink=get_sink(pulse, ev)
         verbose("Sink is: ", sink)
@@ -109,26 +115,26 @@ def duck(ev, pulse):
     sinks=pulse.sink_input_list()
     isPhone=len([p for p in playing if p in PHONES])>0
     for sink in sinks:
-        if not sink.name in PLAY_VOICES+PHONES+DUCKABLE:
+        if not appName(sink) in PLAY_VOICES+PHONES+DUCKABLE:
             continue
         #Undudking
-        if sink.name in ducking:
+        if appName(sink) in ducking:
             if len(playing)==0: 
                 pulse.volume_change_all_chans(sink, FACTOR) 
-                ducking.remove(sink.name)
-            elif not isPhone and sink.name in PLAY_VOICES: # Make sure to raise PLAY_VOICES again
+                ducking.remove(appName(sink))
+            elif not isPhone and appName(sink) in PLAY_VOICES: # Make sure to raise PLAY_VOICES again
                 pulse.volume_change_all_chans(sink, FACTOR) 
-                ducking.remove(sink.name)            
+                ducking.remove(appName(sink))            
        #Ducking
         else: 
             if isPhone:
-                if sink.name in PLAY_VOICES+DUCKABLE:
+                if appName(sink) in PLAY_VOICES+DUCKABLE:
                     pulse.volume_change_all_chans(sink, -FACTOR) 
-                    ducking.append(sink.name)
+                    ducking.append(appName(sink))
             elif len(playing)>0:
-                if sink.name in DUCKABLE: 
+                if appName(sink) in DUCKABLE: 
                     pulse.volume_change_all_chans(sink, -FACTOR) 
-                    ducking.append(sink.name)
+                    ducking.append(appName(sink))
 
 
 
@@ -161,7 +167,7 @@ if __name__=="__main__":
             print("Printing all sink_input events. Take a note of the currently playing streams names to configure on this python file\n\n")
             with pulsectl.Pulse('print') as pulse: 
                 for sink in pulse.sink_input_list():
-                    print(sink.name)
+                    print(appName(sink))
                 pulse.event_mask_set("sink_input") 
                 pulse.event_callback_set(ft.partial(print, pulse))
                 pulse.event_listen() 
