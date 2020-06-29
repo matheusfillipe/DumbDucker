@@ -2,9 +2,10 @@
 
 
 PHONES=['telegram-desktop'] # Voice to duck over when sink is created. It wil duck over the Play_voices. This is useful for thinkgs that are only create sinks when activated, like audios on telegram.
-PLAY_VOICES=['Firefox'] # Name of the Playback to give preference and start ducking all others when it starts playing
+PLAY_VOICES=['Firefox',"ALSA plug-in [firefox]"] # Name of the Playback to give preference and start ducking all others when it starts playing
 DUCKABLE=['RTP Stream (PulseAudio RTP Stream on Vostro)', 'Spotify']#, 'AudioStream'] # Streams to lower when something from the list above plays
 FACTOR=0.38 # Factor to lower other sink's volumes
+AUDIO_DETECTION_TIME=.4 # Treshold time to detect audio volume
 
 
 #########################################################################
@@ -64,8 +65,8 @@ def get_sink(pulse, ev):
 def check_playing(pulse, sink):
     global playing
     if sink and appName(sink) in PLAY_VOICES+PHONES:
-        verbose("Checking!")
-        isPlaying=pulse.get_peak_sample(pulse.sink_info(sink.sink).monitor_source, 0.3, sink.index)>0            
+        verbose("Checking if playing: ")
+        isPlaying=pulse.get_peak_sample(pulse.sink_info(sink.sink).monitor_source, AUDIO_DETECTION_TIME, sink.index)>0            
         if isPlaying and not appName(sink) in playing:
             playing.append(appName(sink))
         elif appName(sink) in playing and not appName(sink) in PHONES:
@@ -99,7 +100,11 @@ def duck(ev, pulse):
                 playing.append(appName(sink))
     else:
         sink=get_sink(pulse, ev)
-        verbose("Sink is: ", sink)
+        try:
+            thingie=appName(sink)
+        except:
+            sink
+        verbose("Sink is: ",thingie)
         if not sink:
             update(pulse)
         else:
@@ -149,7 +154,7 @@ def pulse_loop():
                 while True:
                     pulse.event_listen(timeout=1) 
                     duck(event, pulse)
-        except pulsectl.pulsectl.PulseError:
+        except (pulsectl.pulsectl.PulseError, pulsectl.pulsectl.PulseDisconnected):
             verbose("Failed to connect to PulseAudio: Trying again in 2 seconds")
             time.sleep(2)
 
