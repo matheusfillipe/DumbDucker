@@ -103,7 +103,7 @@ def duck(ev, pulse):
         try:
             thingie=appName(sink)
         except:
-            sink
+            thingie=sink
         verbose("Sink is: ",thingie)
         if not sink:
             update(pulse)
